@@ -133,25 +133,58 @@ class SynthesizerApp:
 
     def create_widgets(self):
         waveform_options = [wf.name for wf in Waveform] + ['OFF']
-        for i, osc_var in enumerate(self.oscillator_waveform_vars):
-            label = tk.Label(self.master, text=f'Oscillator {i + 1}')
-            label.grid(row=i, column=0)
-            osc_menu = ttk.Combobox(self.master, textvariable=osc_var, values=waveform_options, state="readonly")
-            osc_menu.current(0)
-            osc_menu.grid(row=i, column=1)
-            osc_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_oscillator_waveform(index, osc_var.get()))
+        filter_options = ['lowpass', 'highpass']
+        lfo_waveform_options = [wf.name for wf in Waveform]
 
-        # Additional GUI elements for filter and LFO controls (placeholder for now)
+        # Creating widgets for each oscillator
+        for i in range(3):
+            # Oscillator Waveform Selection
+            osc_waveform_label = tk.Label(self.master, text=f'Oscillator {i+1} Waveform')
+            osc_waveform_label.grid(row=i, column=0)
+            osc_waveform_menu = ttk.Combobox(self.master, textvariable=self.oscillator_waveform_vars[i], values=waveform_options, state="readonly")
+            osc_waveform_menu.current(0)
+            osc_waveform_menu.grid(row=i, column=1)
+            osc_waveform_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_oscillator_waveform(index, self.oscillator_waveform_vars[index].get()))
+
+            # Filter Type Selection
+            filter_type_label = tk.Label(self.master, text=f'Filter {i+1} Type')
+            filter_type_label.grid(row=i, column=2)
+            filter_type_menu = ttk.Combobox(self.master, values=filter_options, state="readonly")
+            filter_type_menu.current(0)
+            filter_type_menu.grid(row=i, column=3)
+            filter_type_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_filter_type(index, filter_type_menu.get()))
+
+            # LFO Waveform Selection
+            lfo_waveform_label = tk.Label(self.master, text=f'LFO {i+1} Waveform')
+            lfo_waveform_label.grid(row=i, column=4)
+            lfo_waveform_menu = ttk.Combobox(self.master, values=lfo_waveform_options, state="readonly")
+            lfo_waveform_menu.current(0)
+            lfo_waveform_menu.grid(row=i, column=5)
+            lfo_waveform_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_lfo_waveform(index, lfo_waveform_menu.get()))
+
+        # Additional settings for global controls
+        # ...
 
         self.master.bind("<KeyPress>", self.on_key_press)
         self.master.bind("<KeyRelease>", self.on_key_release)
 
+    # Update methods for oscillators, filters, and LFOs
     def update_oscillator_waveform(self, index, waveform_name):
         if waveform_name == 'OFF':
             self.oscillators[index].active = False
         else:
             self.oscillators[index].waveform = Waveform[waveform_name]
             self.oscillators[index].active = True
+
+    def update_filter_type(self, index, filter_type):
+        self.oscillators[index].filter.type = filter_type
+
+    def update_lfo_waveform(self, index, waveform_name):
+        self.oscillators[index].lfo.waveform = Waveform[waveform_name]
+
+    # Key press and release methods
+   
+
 
     def on_key_press(self, event):
         key = event.char.lower()
