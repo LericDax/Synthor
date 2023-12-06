@@ -24,13 +24,12 @@ class Waveform(Enum):
     NOISE_WHITE = 'white'
     NOISE_PINK = 'pink'
     NOISE_BROWN = 'brown'
-    # ... other noise colors
 
 # Filter Class
 class Filter:
-    def __init__(self):
+    def __init__(self, cutoff_frequency=1000):
         self.type = 'lowpass'  # Default filter type
-        self.cutoff_frequency = 1000  # Default cutoff frequency
+        self.cutoff_frequency = cutoff_frequency  # Default cutoff frequency
         self.order = 2  # Filter order
 
     def butter_filter(self, cutoff, fs, order, filter_type):
@@ -46,9 +45,9 @@ class Filter:
 
 # LFO Class
 class LFO:
-    def __init__(self):
+    def __init__(self, rate=1):
         self.waveform = Waveform.SINE  # Default LFO waveform
-        self.rate = 1  # Default rate in Hz
+        self.rate = rate  # Default rate in Hz
 
     def generate_lfo_wave(self, duration, rate):
         t = np.linspace(0, duration, int(SAMPLE_RATE * duration), False)
@@ -74,7 +73,7 @@ class Oscillator:
         if not self.active:
             return np.zeros(int(SAMPLE_RATE * duration))
 
-        # Generate waveform based on selected type
+        # Generate waveform based on selected type and frequency
         if self.waveform == Waveform.SINE:
             wave = np.sin(frequency * t * 2 * np.pi)
         elif self.waveform == Waveform.SAWTOOTH:
@@ -116,9 +115,12 @@ class SynthPolyphony:
 
 # Frequency Mappings for Keys
 key_frequencies = {
-    'q': 261.63, 'w': 277.18, 'e': 293.66, 'r': 311.13, 't': 329.63, 'y': 349.23, 'u': 369.99, 'i': 392.00, 'o': 415.30, 'p': 440.00,
-    'a': 220.00, 's': 233.08, 'd': 246.94, 'f': 261.63, 'g': 277.18, 'h': 293.66, 'j': 311.13, 'k': 329.63, 'l': 349.23, ';': 369.99, "'": 392.00,
-    'z': 174.61, 'x': 185.00, 'c': 196.00, 'v': 207.65, 'b': 220.00, 'n': 233.08, 'm': 246.94, ',': 261.63, '.': 277.18, '/': 293.66
+    # High keys (Q to P)
+    'q': 1046.50, 'w': 1108.73, 'e': 1174.66, 'r': 1244.51, 't': 1318.51, 'y': 1396.91, 'u': 1479.98, 'i': 1567.98, 'o': 1661.22, 'p': 1760.00,
+    # Mid keys (A to L)
+    'a': 880.00, 's': 932.33, 'd': 987.77, 'f': 1046.50, 'g': 1108.73, 'h': 1174.66, 'j': 1244.51, 'k': 1318.51, 'l': 1396.91,
+    # Bass keys (Z to M)
+    'z': 440.00, 'x': 466.16, 'c': 493.88, 'v': 523.25, 'b': 554.37, 'n': 587.33, 'm': 622.25
 }
 
 # Synthesizer Application Class
@@ -129,11 +131,13 @@ class SynthesizerApp:
         self.oscillators = [Oscillator() for _ in range(3)]
         self.synth_polyphony = SynthPolyphony()
         self.oscillator_waveform_vars = [tk.StringVar(master) for _ in range(3)]
+        self.filter_cutoff_vars = [tk.DoubleVar(master, value=1000) for _ in range(3)]  # For filter cutoffs
+        self.lfo_rate_vars = [tk.DoubleVar(master, value=1) for _ in range(3)]  # For LFO rates
         self.create_widgets()
 
     def create_widgets(self):
         waveform_options = [wf.name for wf in Waveform] + ['OFF']
-        filter_options = ['lowpass', 'highpass']
+        filter_options = ['lowpass', 'highpass', 'bandpass', 'notch']
         lfo_waveform_options = [wf.name for wf in Waveform]
 
         # Creating widgets for each oscillator
@@ -146,20 +150,30 @@ class SynthesizerApp:
             osc_waveform_menu.grid(row=i, column=1)
             osc_waveform_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_oscillator_waveform(index, self.oscillator_waveform_vars[index].get()))
 
+            # Filter Cutoff Frequency Slider
+            filter_cutoff_slider = tk.Scale(self.master, from_=20, to=20000, orient='horizontal', label='Filter Cutoff', variable=self.filter_cutoff_vars[i])
+            filter_cutoff_slider.grid(row=i, column=2)
+            filter_cutoff_slider.bind('<Motion>', lambda event, index=i: self.update_filter_cutoff(index, self.filter_cutoff_vars[index].get()))
+
+            # LFO Rate Slider
+            lfo_rate_slider = tk.Scale(self.master, from_=0.1, to=10, orient='horizontal', label='LFO Rate', variable=self.lfo_rate_vars[i])
+            lfo_rate_slider.grid(row=i, column=3)
+            lfo_rate_slider.bind('<Motion>', lambda event, index=i: self.update_lfo_rate(index, self.lfo_rate_vars[index].get()))
+
             # Filter Type Selection
             filter_type_label = tk.Label(self.master, text=f'Filter {i+1} Type')
-            filter_type_label.grid(row=i, column=2)
+            filter_type_label.grid(row=i, column=4)
             filter_type_menu = ttk.Combobox(self.master, values=filter_options, state="readonly")
             filter_type_menu.current(0)
-            filter_type_menu.grid(row=i, column=3)
+            filter_type_menu.grid(row=i, column=5)
             filter_type_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_filter_type(index, filter_type_menu.get()))
 
             # LFO Waveform Selection
             lfo_waveform_label = tk.Label(self.master, text=f'LFO {i+1} Waveform')
-            lfo_waveform_label.grid(row=i, column=4)
+            lfo_waveform_label.grid(row=i, column=5)
             lfo_waveform_menu = ttk.Combobox(self.master, values=lfo_waveform_options, state="readonly")
             lfo_waveform_menu.current(0)
-            lfo_waveform_menu.grid(row=i, column=5)
+            lfo_waveform_menu.grid(row=i, column=6)
             lfo_waveform_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_lfo_waveform(index, lfo_waveform_menu.get()))
 
         # Additional settings for global controls
@@ -175,6 +189,9 @@ class SynthesizerApp:
         else:
             self.oscillators[index].waveform = Waveform[waveform_name]
             self.oscillators[index].active = True
+            
+    def update_oscillator_frequency(self, index, frequency):
+        self.oscillators[index].frequency = float(frequency)
 
     def update_filter_type(self, index, filter_type):
         self.oscillators[index].filter.type = filter_type
@@ -198,11 +215,19 @@ class SynthesizerApp:
             self.synth_polyphony.stop_sound(key)
 
     def generate_sound(self, key):
-        frequency = key_frequencies[key]
-        duration = 1  # Duration in seconds for each note
-        waves = [osc.generate_wave(frequency, duration) for osc in self.oscillators]
-        combined_wave = np.sum(waves, axis=0) / len(self.oscillators)
-        return combined_wave
+        if key in key_frequencies:
+            frequency = key_frequencies[key]
+            duration = 1  # Duration in seconds for each note
+            waves = [osc.generate_wave(frequency, duration) for osc in self.oscillators]
+            combined_wave = np.sum(waves, axis=0) / len(self.oscillators)
+            return combined_wave
+        return np.zeros(int(SAMPLE_RATE * 1))
+
+    def update_filter_cutoff(self, index, cutoff):
+        self.oscillators[index].filter.cutoff_frequency = cutoff
+
+    def update_lfo_rate(self, index, rate):
+        self.oscillators[index].lfo.rate = rate
 
 # Main Synthesizer Setup
 if __name__ == "__main__":
