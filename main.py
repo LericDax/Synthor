@@ -138,10 +138,12 @@ class SynthesizerApp:
     def create_widgets(self):
         waveform_options = [wf.name for wf in Waveform] + ['OFF']
         filter_options = ['lowpass', 'highpass', 'bandpass', 'notch']
-        lfo_waveform_options = [wf.name for wf in Waveform]
+        lfo_waveform_options = [wf.name for wf in Waveform] + ['OFF']
 
         # Creating widgets for each oscillator
         for i in range(3):
+            # ... existing widget setup for each oscillator ...
+
             # Oscillator Waveform Selection
             osc_waveform_label = tk.Label(self.master, text=f'Oscillator {i+1} Waveform')
             osc_waveform_label.grid(row=i, column=0)
@@ -154,6 +156,7 @@ class SynthesizerApp:
             filter_cutoff_slider = tk.Scale(self.master, from_=20, to=20000, orient='horizontal', label='Filter Cutoff', variable=self.filter_cutoff_vars[i])
             filter_cutoff_slider.grid(row=i, column=2)
             filter_cutoff_slider.bind('<Motion>', lambda event, index=i: self.update_filter_cutoff(index, self.filter_cutoff_vars[index].get()))
+
 
             # LFO Rate Slider
             lfo_rate_slider = tk.Scale(self.master, from_=0.1, to=10, orient='horizontal', label='LFO Rate', variable=self.lfo_rate_vars[i])
@@ -170,10 +173,10 @@ class SynthesizerApp:
 
             # LFO Waveform Selection
             lfo_waveform_label = tk.Label(self.master, text=f'LFO {i+1} Waveform')
-            lfo_waveform_label.grid(row=i, column=5)
+            lfo_waveform_label.grid(row=i, column=6)
             lfo_waveform_menu = ttk.Combobox(self.master, values=lfo_waveform_options, state="readonly")
             lfo_waveform_menu.current(0)
-            lfo_waveform_menu.grid(row=i, column=6)
+            lfo_waveform_menu.grid(row=i, column=7)
             lfo_waveform_menu.bind('<<ComboboxSelected>>', lambda event, index=i: self.update_lfo_waveform(index, lfo_waveform_menu.get()))
 
         # Additional settings for global controls
@@ -190,25 +193,25 @@ class SynthesizerApp:
             self.oscillators[index].waveform = Waveform[waveform_name]
             self.oscillators[index].active = True
             
-    def update_oscillator_frequency(self, index, frequency):
-        self.oscillators[index].frequency = float(frequency)
-
     def update_filter_type(self, index, filter_type):
         self.oscillators[index].filter.type = filter_type
 
     def update_lfo_waveform(self, index, waveform_name):
-        self.oscillators[index].lfo.waveform = Waveform[waveform_name]
+        if waveform_name == 'OFF':
+            self.oscillators[index].lfo.enabled = False
+        else:
+            self.oscillators[index].lfo.waveform = Waveform[waveform_name]
+            self.oscillators[index].lfo.enabled = True
 
     # Key press and release methods
-   
-
+    # ...
 
     def on_key_press(self, event):
         key = event.char.lower()
         if key not in self.synth_polyphony.active_notes and key in key_frequencies:
             sound = self.generate_sound(key)
             self.synth_polyphony.play_sound(sound, key)
-
+            
     def on_key_release(self, event):
         key = event.char.lower()
         if key in self.synth_polyphony.active_notes:
